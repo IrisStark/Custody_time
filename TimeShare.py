@@ -257,10 +257,10 @@ class Calendar():
 #         label_other_person = df['label'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
 #         df.loc[(df['start_date'].dt.date>=last_day.date()) & (df['end_date'].dt.date<=date_first_day_other_person_schedule.date()), 'label'] = label_other_person
         '''If only I pick them up on Tuesday uncomment these lines below'''
-        date_first_day_other_person_schedule = df['date'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
-        label_other_person = df['label'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
-        if label_other_person=='Mom':
-            df.loc[(df['start_date'].dt.date>=last_day.date()) & (df['end_date'].dt.date<=date_first_day_other_person_schedule.date()), 'label'] = label_other_person
+#         date_first_day_other_person_schedule = df['date'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
+#         label_other_person = df['label'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
+#         if label_other_person=='Mom':
+#             df.loc[(df['start_date'].dt.date>=last_day.date()) & (df['end_date'].dt.date<=date_first_day_other_person_schedule.date()), 'label'] = label_other_person
     #__________________________________________________________________________________
         #check for special schedule clashes
 
@@ -284,27 +284,17 @@ class Calendar():
                          time_schedule_ends, whose_this_schedule, df, is_changing=False,is_odd=None):
         holiday_calendar = CustodyHolidays(years=list(df['date'].dt.year.unique()))
         dates = holiday_calendar.get_named(holiday)
-        print(holiday,df['date'].min().year, df['date'].max().year)
-        print('dates',[x.year for x in dates])
-        print('CustodyHolidays',CustodyHolidays(2022).get_named(holiday))
+        #there are 2 days in calendar for each of these days
         if holiday == "Christmas":
             years = [d.year for d in dates]
-            print(set(years))
             dates = [datetime.datetime(year,12,24).date() for year in set(years)]
-            print('changed  dates',dates)
         if holiday == "New Year":
             years = [d.year for d in dates]
             dates = [datetime.datetime(year,12,31).date() for year in set(years)]
-        print('new dates',dates)
         for date in dates:
             if date in df.date.dt.date.unique():
-                print('in if')
                 start_date = pd.to_datetime(date - datetime.timedelta(days=days_before_holiday_starts))+time_schedule_starts
-                print('start_date',start_date)
-
                 end_date = pd.to_datetime(date + datetime.timedelta(days=days_after_holiday_ends))+time_schedule_ends
-                print(start_date, end_date, holiday)
-
                 if is_changing==True:
                     df = right_label(df, start_date, end_date, time_schedule_starts, time_schedule_ends, is_odd, whose_this_schedule)
                 else:
@@ -314,7 +304,6 @@ class Calendar():
                 dates_check = df['date'][(df['start_date'].dt.date>=start_date.date()) & (df['end_date'].dt.date<=end_date.date())]
 
                 #check for special schedule clashes
-                print(holiday)
                 special_dates = df['date'][df['is_special']==True]
                 df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates_check)),'schedule_clash'] = True
                 df.loc[df['date'].isin(dates_check),'is_special'] = True
@@ -438,8 +427,6 @@ t['plot_label']=0
 t.loc[t['label']=='Dad', 'plot_label'] = 1
 figure(figsize=(15, 20), dpi=80)
 calmap.yearplot(t['plot_label'],cmap='spring')
-
-
 
 
 
