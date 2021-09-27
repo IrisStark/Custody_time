@@ -442,27 +442,12 @@ sh_1=c.schedule(schedule_name='first', whose_this_schedule='Dad', frequency='wee
 t = sh_1.set_index('date')
 t['plot_label']=0
 t.loc[t['label']=='Dad', 'plot_label'] = 1
-figure(figsize=(15, 20), dpi=80)
-calmap.yearplot(t['plot_label'],cmap='spring')
-
-
-
-sdt = datetime.datetime(2022, 1, 7)
+figure(figsize=(15, 20), dpi=80)sdt = datetime.datetime(2022, 1, 7)
 edt = datetime.datetime(2025, 12, 31)
 # cal = calendar()
 # dt = cal.holidays(start=sdt, end=edt)
 # print(dt)
 #my calendar 2022
-
-
-(sh_1.groupby('label')['time_diff_hours'].sum()/sh_1['time_diff_hours'].sum())*100
-df = sh_1[sh_1['date'].dt.year==2022]
-df.reset_index(inplace=True, drop=True)
-# create weeks number based on day of the week  
-df['weeks'] = df['date'].dt.week
-df['weekday'] = df['date'].dt.weekday
-# pivot the table
-df.pivot('weeks', 'weekday', 'time_diff_hours').fillna(0)
 
 c = Calendar()
 #school schedule
@@ -535,3 +520,103 @@ New Year’s Eve/Day: The New Year’s Holiday 5:00 PM December 30 and ending 10
 The mother  even-numbered years, and the father in odd-numbered years. The yearly rotation shall be determined by which year December 30 falls within.
 need thanksgiving, christmas, new year
 '''
+
+(sh_1.groupby('label')['time_diff_hours'].sum()/sh_1['time_diff_hours'].sum())*100
+
+df = sh_1[sh_1['date'].dt.year==2022]
+df.reset_index(inplace=True, drop=True)
+# create weeks number based on day of the week  
+df['weeks'] = df['date'].dt.week
+df['weekday'] = df['date'].dt.weekday
+# pivot the table
+df.pivot('weeks', 'weekday', 'time_diff_hours').fillna(0)
+calmap.yearplot(t['plot_label'],cmap='spring')
+
+sdt = datetime.datetime(2022, 1, 7)
+edt = datetime.datetime(2025, 12, 31)
+# cal = calendar()
+# dt = cal.holidays(start=sdt, end=edt)
+# print(dt)
+#my calendar 2022
+
+c = Calendar()
+#school schedule
+start_date = datetime.date(2022, 1, 7)
+time_schedule_starts = pd.to_timedelta('18:00:00')
+time_schedule_ends = pd.to_timedelta('08:00:00')
+sh_1=None
+sh_1=c.schedule(schedule_name='school time', whose_this_schedule='Dad', frequency='a', \
+                 time_schedule_starts=time_schedule_starts, days=[4,5,6,0,1,2],start_date=sdt,\
+           time_schedule_ends=time_schedule_ends,end_date=edt)
+#summer school break schedule
+# start_date = datetime.date(2022, 6, 10)
+# end_date = datetime.date(2022, 8, 5)
+time_schedule_ends = pd.to_timedelta('18:00:00')
+time_schedule_starts = pd.to_timedelta('18:00:00')
+sh_1 = c.schedule(df=sh_1,frequency='a', month_of_year_starts=6, \
+                 week_of_month_starts=2, day_of_week_starts=4,  month_of_year_ends=8, \
+                 week_of_month_ends=0, day_of_week_ends=4, time_schedule_ends=time_schedule_ends,
+                  time_schedule_starts=time_schedule_starts,
+                     days=[4,5,6,0,1,2,3,4],  schedule_name='summer school break',whose_this_schedule='Dad')
+
+monday_holidays = ['Martin Luther King Jr. Day', "Washington's Birthday", "Memorial Day", 'Labor Day']
+
+time_schedule_ends = pd.to_timedelta('10:00:00')
+for holiday in monday_holidays:
+    sh_1 = c.monday_holiday(df=sh_1, holiday=holiday, day_of_week_ends=1, \
+                                    time_schedule_ends=time_schedule_ends,)
+    
+sh_1 = c.custody_holidays(df=sh_1, holiday = "Mother's day", days_before_holiday_starts=2,\
+                                      time_schedule_starts=pd.to_timedelta('18:00:00'), days_after_holiday_ends=1,\
+                             time_schedule_ends=pd.to_timedelta('8:00:00'),whose_this_schedule="Mom")
+sh_1 = c.custody_holidays(df=sh_1, holiday = "Father's day", days_before_holiday_starts=2,\
+                                      time_schedule_starts=pd.to_timedelta('18:00:00'), days_after_holiday_ends=1,\
+                             time_schedule_ends=pd.to_timedelta('8:00:00'),whose_this_schedule="Dad")
+sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('08:00:00'), \
+                          time_schedule_ends=pd.to_timedelta('18:00:00'), whose_this_schedule='Mom', \
+                                    schedule_name='Febraury break', month_of_year_starts=2, week_of_month_starts=2, \
+                                    day_of_week_starts=0,  month_of_year_ends=2, week_of_month_ends=2, \
+                                    day_of_week_ends=4, is_changing=True,is_odd=False, is_special=True)
+sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('08:00:00'), \
+                          time_schedule_ends=pd.to_timedelta('18:00:00'), whose_this_schedule='Mom', \
+                                    schedule_name='Spring break', month_of_year_starts=4, week_of_month_starts=0, \
+                                    day_of_week_starts=0,  month_of_year_ends=4, week_of_month_ends=0, \
+                                    day_of_week_ends=4, is_changing=True,is_odd=True, is_special=True)
+sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('18:00:00'), \
+                          time_schedule_ends=pd.to_timedelta('08:00:00'), whose_this_schedule='Mom', \
+                                    schedule_name='4th July', date_starts=(7,3), date_ends=(7,6),\
+                                     is_changing=True,is_odd=False, is_special=True)
+'''4th of July:  5:00 PM on July 3 and ending at 10:00 AM on July 6. The mother even-numbered years, and 
+the father odd-numbered years.'''
+sh_1 = c.custody_holidays(df=sh_1, time_schedule_starts=pd.to_timedelta('18:00:00'), \
+                          time_schedule_ends=pd.to_timedelta('08:00:00'), whose_this_schedule='Mom', \
+                                    holiday='Thanksgiving', days_before_holiday_starts=1, days_after_holiday_ends=4,\
+                                     is_changing=True,is_odd=False)
+
+sh_1 = c.custody_holidays(holiday='Christmas', days_before_holiday_starts=1,time_schedule_starts=pd.to_timedelta('18:00:00'), \
+                          days_after_holiday_ends=2, time_schedule_ends=pd.to_timedelta('08:00:00'), whose_this_schedule="Mom", \
+                          df=sh_1, is_changing=True,is_odd=True)
+
+sh_1 = c.custody_holidays(holiday="New Year", days_before_holiday_starts=1,time_schedule_starts=pd.to_timedelta('18:00:00'), \
+                          days_after_holiday_ends=2, time_schedule_ends=pd.to_timedelta('08:00:00'), whose_this_schedule="Mom", \
+                          df=sh_1, is_changing=True,is_odd=False)
+'''Thanksgiving Break: 5:00 PM of the Wednesday before Thanksgiving and ending Monday morning return to school, 
+or 10:00 AM if school is not in session. The mother  even-numbered years, and the father  odd-numbered years.
+
+Christmas Eve & Day: at 5:00 PM December 23 and ending at 10:00 AM December 26. The mother odd-numbered years, 
+and the father shall have care of the children in even-numbered years. The yearly rotation shall be determined by which year December 30 falls within.
+
+New Year’s Eve/Day: The New Year’s Holiday 5:00 PM December 30 and ending 10:00 AM January 2. 
+The mother  even-numbered years, and the father in odd-numbered years. The yearly rotation shall be determined by which year December 30 falls within.
+need thanksgiving, christmas, new year
+'''
+
+(sh_1.groupby('label')['time_diff_hours'].sum()/sh_1['time_diff_hours'].sum())*100
+
+df = sh_1[sh_1['date'].dt.year==2022]
+df.reset_index(inplace=True, drop=True)
+# create weeks number based on day of the week  
+df['weeks'] = df['date'].dt.week
+df['weekday'] = df['date'].dt.weekday
+# pivot the table
+df.pivot('weeks', 'weekday', 'time_diff_hours').fillna(0)
