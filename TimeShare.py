@@ -51,21 +51,25 @@ class CustodyHolidays(holidays.HolidayBase):
 def start_end_dates(df, month_of_year_starts, week_of_month_starts, day_of_week_starts,  \
                     month_of_year_ends, week_of_month_ends, day_of_week_ends):
         c = calendar.Calendar(firstweekday=calendar.SUNDAY)
-        year = df['date'].loc[df['date'].dt.month==month_of_year_starts].dt.year.unique()[0]    
-        monthcal = c.monthdatescalendar(year,month_of_year_starts)      
-        start_date = [day for week in monthcal for day in week if \
-                        day.weekday() == day_of_week_starts and \
-                        day.month == month_of_year_starts][week_of_month_starts]
-        year = df['date'].loc[df['date'].dt.month==month_of_year_ends].dt.year.unique()[0]
-        monthcal = c.monthdatescalendar(year,month_of_year_ends)
-        end_date = [day for week in monthcal for day in week if \
-                        day.weekday() == day_of_week_ends and \
-                        day.month == month_of_year_ends][week_of_month_ends]
-        start_date = pd.to_datetime(start_date)+time_schedule_starts
-        end_date = pd.to_datetime(end_date)+time_schedule_ends
-        if end_date < start_date:
-            end_date = end_date + datetime.timedelta(days=7)
-        return start_date, end_date
+        years = df['date'].loc[df['date'].dt.month==month_of_year_starts].dt.year.unique()  
+        start_dates = []
+        end_dates = []
+        for year in years:
+            monthcal = c.monthdatescalendar(year,month_of_year_starts)      
+            start_date = [day for week in monthcal for day in week if \
+                            day.weekday() == day_of_week_starts and \
+                            day.month == month_of_year_starts][week_of_month_starts]
+            monthcal = c.monthdatescalendar(year,month_of_year_ends)
+            end_date = [day for week in monthcal for day in week if \
+                            day.weekday() == day_of_week_ends and \
+                            day.month == month_of_year_ends][week_of_month_ends]
+            start_date = pd.to_datetime(start_date)+time_schedule_starts
+            end_date = pd.to_datetime(end_date)+time_schedule_ends
+            if end_date < start_date:
+                end_date = end_date + datetime.timedelta(days=7)
+            start_dates.append(start_date)
+            end_dates.append(end_date)
+        return start_dates, end_dates
     
 def right_label(df, start_date, end_date, time_schedule_starts, time_schedule_ends, is_odd, whose_this_schedule):
     other_party = 'Mom' if whose_this_schedule == 'Dad' else 'Dad'
@@ -117,12 +121,14 @@ class Calendar():
                  week_of_month_starts=None, day_of_week_starts=None,  month_of_year_ends=None, \
                  week_of_month_ends=None, day_of_week_ends=None, start_month_date=None, end_month_date=None):
         if start_date != None:
-            start_date = start_date
+            start_dates = [start_date]
         elif month_of_year_starts != None:
-            start_date, _ = start_end_dates(df, month_of_year_starts, week_of_month_starts, day_of_week_starts,  \
+            start_dates, _ = start_end_dates(df, month_of_year_starts, week_of_month_starts, day_of_week_starts,  \
                 month_of_year_ends, week_of_month_ends, day_of_week_ends)
         else:
             years = df.date.dt.year.unique()
+            start_dates = []
+            end_dates = []
             for year in years:
                 candidate_start = datetime.date(year, date_starts[0], date_starts[1])
                 if pd.to_datetime(candidate_start) in sh_1.date.dt.date.to_list():
@@ -133,12 +139,15 @@ class Calendar():
                     start_date = pd.to_datetime(candidate_start)+time_schedule_starts
                 if pd.to_datetime(candidate_end) in sh_1.date.dt.date.to_list():
                     end_date = pd.to_datetime(candidate_end)+time_schedule_ends
+                start_dates.append(start_date)
+                end_dates.append(end_date)
                     
-                    
+        if end_date != None:
+            end_dates = [end_date]
         if end_date == None and day_of_week_ends == None:
-            end_date=start_date+datetime.timedelta(days=365)
+            end_dates=[start_date+datetime.timedelta(days=365*36)]
         elif month_of_year_ends != None:
-            _, end_date = start_end_dates(df, month_of_year_starts, week_of_month_starts, day_of_week_starts,  \
+            _, end_dates = start_end_dates(df, month_of_year_starts, week_of_month_starts, day_of_week_starts,  \
                 month_of_year_ends, week_of_month_ends, day_of_week_ends)
 
     #___
@@ -146,35 +155,35 @@ class Calendar():
             print('Wrong whose_this_schedule input. Should be "Dad" or "Mom"')
    #____         
             
-            
-        start_date = pd.to_datetime(start_date)           
-        end_date = pd.to_datetime(end_date)
-        other_party = 'Mom' if whose_this_schedule == 'Dad' else 'Dad'
-        number_of_weeks = math.ceil((end_date-start_date).days/7)
-        #for weekly and alternative weeks
-        if frequency=='weekly':
-            days_in_round = 7
-        else:
-            days_in_round = 14
-        
-        #TODO account if schedule starts on different day, then custody time begins
-        if len(days)==7:
-            labels = [whose_this_schedule]*7
-            labels.extend([other_party]*7)
-        else:
-            labels = [whose_this_schedule]*(len(days)-1)
-            labels.extend([other_party]*(days_in_round-len(days)+1))
+        for start_date, end_date in zip(start_dates, end_dates):    
+            start_date = pd.to_datetime(start_date)           
+            end_date = pd.to_datetime(end_date)
+            other_party = 'Mom' if whose_this_schedule == 'Dad' else 'Dad'
+            number_of_weeks = math.ceil((end_date-start_date).days/7)
+            #for weekly and alternative weeks
+            if frequency=='weekly':
+                days_in_round = 7
+            else:
+                days_in_round = 14
+
+            #TODO account if schedule starts on different day, then custody time begins
+            if len(days)==7:
+                labels = [whose_this_schedule]*7
+                labels.extend([other_party]*7)
+            else:
+                labels = [whose_this_schedule]*(len(days)-1)
+                labels.extend([other_party]*(days_in_round-len(days)+1))
 
 
-        if df is None:
-            df = self.add_rows(end_date, start_date, labels, time_schedule_ends, other_party, \
-                                    days_in_round, time_schedule_starts, schedule_name)
-        else:
-            keep_df = df[(df['date']<start_date) | (df['date']>end_date)]
-            changed_df = self.add_rows(end_date, start_date, labels, time_schedule_ends, other_party, \
-                                       days_in_round, time_schedule_starts, schedule_name)
-            df = pd.concat([keep_df,changed_df])
-            df=df.sort_values(by=['date'])
+            if df is None:
+                df = self.add_rows(end_date, start_date, labels, time_schedule_ends, other_party, \
+                                        days_in_round, time_schedule_starts, schedule_name)
+            else:
+                keep_df = df[(df['date']<start_date) | (df['date']>end_date)]
+                changed_df = self.add_rows(end_date, start_date, labels, time_schedule_ends, other_party, \
+                                           days_in_round, time_schedule_starts, schedule_name)
+                df = pd.concat([keep_df,changed_df])
+                df=df.sort_values(by=['date'])
             
         
     #TODO 
@@ -182,6 +191,8 @@ class Calendar():
     #X days each, 3-4-4-3
         df['shedule_names_clash']= None
         df['schedule_clash'] = False
+        df.drop_duplicates(inplace=True, subset=['label','start_date','end_date','time_diff_hours'],keep='last')
+        df.reset_index(inplace=True, drop=True)
         return df
     
     def add_rows(self, end_date, start_date, labels, time_schedule_ends, other_party, days_in_round, \
@@ -228,52 +239,56 @@ class Calendar():
         else:
             shedule_names_clash = shedule_names
         df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates)),'schedule_clash_names'] = shedule_names_clash
+        df.drop_duplicates(inplace=True, subset=['label','start_date','end_date','time_diff_hours'],keep='last')
+        df.reset_index(inplace=True, drop=True)
         return df
     
     #'Martin Luther King Jr. Day', 'Memorial Day', 'Labor Day'
     #day_of_week_ends - interger 0 -  Monday, 6 - Sunday
     def monday_holiday(self, holiday, day_of_week_ends, time_schedule_ends, df):
-        us_holidays = holidays.US(years=[df['date'].min().year, df['date'].max().year])
-        date = pd.to_datetime(us_holidays.get_named(holiday)[0])
-        
-        previous_day = date - datetime.timedelta(days=1)
-        last_day = date + datetime.timedelta(days=day_of_week_ends)
-        whose_this_schedule = str(df['label'][(df['end_date']>=previous_day) & (df['end_date']<=date)].unique()[0])
-        
-        df.loc[(df['end_date']>=previous_day) & (df['end_date']<=last_day), 'label'] = whose_this_schedule
-        dates = df['date'][(df['end_date']>=previous_day) & (df['end_date']<=last_day)]
-        
-        #My case
-        #______________________________________________________________________________________
-        '''if exchange time is 8am Tuesday, but his schedule ends on Wednesday 8am it does not make much sense
-        for me to pick up kids on Tuesday, cause in this case, I supposed to give him kids on my Monday holidays
-        on Tuesday. Probably it could be a case for custodial/not custodial parent.
-        Grey area. 
-        
-        When both blocks below are commented out - nobody picks up kids on Tuesday
-        
-        If both of us pick them up on Tuesday uncomment lines below'''
-#         date_first_day_other_person_schedule = df['date'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
-#         label_other_person = df['label'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
-#         df.loc[(df['start_date'].dt.date>=last_day.date()) & (df['end_date'].dt.date<=date_first_day_other_person_schedule.date()), 'label'] = label_other_person
-        '''If only I pick them up on Tuesday uncomment these lines below'''
-#         date_first_day_other_person_schedule = df['date'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
-#         label_other_person = df['label'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
-#         if label_other_person=='Mom':
-#             df.loc[(df['start_date'].dt.date>=last_day.date()) & (df['end_date'].dt.date<=date_first_day_other_person_schedule.date()), 'label'] = label_other_person
-    #__________________________________________________________________________________
-        #check for special schedule clashes
+        us_holidays = holidays.US(years=list(df['date'].dt.year.unique()))
+        dates = pd.to_datetime(us_holidays.get_named(holiday))
+        for date in dates:
+            previous_day = date - datetime.timedelta(days=1)
+            last_day = date + datetime.timedelta(days=day_of_week_ends)
+            whose_this_schedule = str(df['label'][(df['end_date']>=previous_day) & (df['end_date']<=date)].unique()[0])
 
-        dates_check = df['date'][(df['start_date'].dt.date>=start_date) & (df['end_date'].dt.date<=end_date)]
-        special_dates = df['date'][df['is_special']==True]
-        df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates)),'schedule_clash'] = True
-        df.loc[df['date'].isin(dates),'is_special'] = True
-        df.loc[df['date'].isin(dates),'schedule_name'] = holiday
-        shedule_names = df['shedule_names_clash'][(df['date'].isin(special_dates))&(df['date'].isin(dates))].unique()
-        shedule_names_clash = list(shedule_names)
-        if len(shedule_names)>1:
-            shedule_names_clash = df['schedule_name'][(df['date'].isin(special_dates))&(df['date'].isin(dates_check))].unique()
-            df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates)),'schedule_clash_names'] = shedule_names_clash
+            df.loc[(df['end_date']>=previous_day) & (df['end_date']<=last_day), 'label'] = whose_this_schedule
+            dates = df['date'][(df['end_date']>=previous_day) & (df['end_date']<=last_day)]
+
+            #My case
+            #______________________________________________________________________________________
+            '''if exchange time is 8am Tuesday, but his schedule ends on Wednesday 8am it does not make much sense
+            for me to pick up kids on Tuesday, cause in this case, I supposed to give him kids on my Monday holidays
+            on Tuesday. Probably it could be a case for custodial/not custodial parent.
+            Grey area. 
+
+            When both blocks below are commented out - nobody picks up kids on Tuesday
+
+            If both of us pick them up on Tuesday uncomment lines below'''
+    #         date_first_day_other_person_schedule = df['date'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
+    #         label_other_person = df['label'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
+    #         df.loc[(df['start_date'].dt.date>=last_day.date()) & (df['end_date'].dt.date<=date_first_day_other_person_schedule.date()), 'label'] = label_other_person
+            '''If only I pick them up on Tuesday uncomment these lines below'''
+    #         date_first_day_other_person_schedule = df['date'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
+    #         label_other_person = df['label'][(df['start_date'].dt.date >= last_day.date()) & (df['label']!=whose_this_schedule)].iloc[0]
+    #         if label_other_person=='Mom':
+    #             df.loc[(df['start_date'].dt.date>=last_day.date()) & (df['end_date'].dt.date<=date_first_day_other_person_schedule.date()), 'label'] = label_other_person
+        #__________________________________________________________________________________
+            #check for special schedule clashes
+
+            dates_check = df['date'][(df['start_date'].dt.date>=start_date) & (df['end_date'].dt.date<=end_date)]
+            special_dates = df['date'][df['is_special']==True]
+            df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates)),'schedule_clash'] = True
+            df.loc[df['date'].isin(dates),'is_special'] = True
+            df.loc[df['date'].isin(dates),'schedule_name'] = holiday
+            shedule_names = df['shedule_names_clash'][(df['date'].isin(special_dates))&(df['date'].isin(dates))].unique()
+            shedule_names_clash = list(shedule_names)
+            if len(shedule_names)>1:
+                shedule_names_clash = df['schedule_name'][(df['date'].isin(special_dates))&(df['date'].isin(dates_check))].unique()
+                df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates)),'schedule_clash_names'] = shedule_names_clash
+        df.drop_duplicates(inplace=True, subset=['label','start_date','end_date','time_diff_hours'],keep='last')
+        df.reset_index(inplace=True, drop=True)
         return df
     
     #when the schedule starts and ends depends on days before and after the holiday
@@ -314,7 +329,8 @@ class Calendar():
                     shedule_names_clash = str(df['schedule_name'][(df['date'].isin(special_dates))&(df['date'].isin(dates_check))].unique())
 
                     df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates_check)),'schedule_clash_names'] = shedule_names_clash
-
+        df.drop_duplicates(inplace=True, subset=['label','start_date','end_date','time_diff_hours'],keep='last')
+        df.reset_index(inplace=True, drop=True)
         return df
 
     #for school breaks kind of schedules. When it's one person, who has kids at that time of schedule. No changes.
@@ -329,7 +345,9 @@ class Calendar():
                                     day_of_week_starts=None,  month_of_year_ends=None, week_of_month_ends=None, \
                                     day_of_week_ends=None, date_starts=None, date_ends=None,  is_changing=False,\
                                     is_odd=None, is_special=False):
-        
+        other_party = 'Mom' if whose_this_schedule == 'Dad' else 'Dad'
+        start_dates = []
+        end_dates = []
         if date_starts is not None and date_ends is not None:
             years = df.date.dt.year.unique()
             for year in years:
@@ -339,36 +357,42 @@ class Calendar():
                 
                 if pd.to_datetime(candidate_start) in df.date.dt.date.to_list():
                     start_date = pd.to_datetime(candidate_start)+time_schedule_starts
+                    start_dates.append(start_date)
                 if pd.to_datetime(candidate_end) in df.date.dt.date.to_list():
                     end_date = pd.to_datetime(candidate_end)+time_schedule_ends
+                    end_dates.append(end_date)
 
         else:
-            start_date, end_date = start_end_dates(df, month_of_year_starts, week_of_month_starts, day_of_week_starts,  \
+            start_dates, end_dates = start_end_dates(df, month_of_year_starts, week_of_month_starts, day_of_week_starts,  \
                         month_of_year_ends, week_of_month_ends, day_of_week_ends)
-        other_party = 'Mom' if whose_this_schedule == 'Dad' else 'Dad'
-        if is_changing==True:
-            df = right_label(df, start_date, end_date, time_schedule_starts, time_schedule_ends, is_odd, whose_this_schedule)
-
-        else:
-            df.loc[(df['start_date'].dt.date>=start_date.date()) & (df['end_date'].dt.date<=end_date.date()), 'label'] = whose_this_schedule
-        
-        df = right_time(df, start_date, end_date, time_schedule_starts, time_schedule_ends, whose_this_schedule)
-        
-        if is_special==True:
-            #check for special schedule clashes
-            dates_check = df['date'][(df['start_date'].dt.date>=start_date.date()) & (df['end_date'].dt.date<=end_date.date())]
-            special_dates = df['date'][df['is_special']==True]
-            df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates_check)),'schedule_clash'] = True
-            df.loc[df['date'].isin(dates_check),'is_special'] = True
-            df.loc[df['date'].isin(dates_check),'schedule_name'] = holiday
-            shedule_names = df['shedule_names_clash'][(df['date'].isin(special_dates))&(df['date'].isin(dates_check))].unique()
-            shedule_names_clash = list(shedule_names)
-            if len(shedule_names)>1:
-                shedule_names_clash = str(df['schedule_name'][(df['date'].isin(special_dates))&(df['date'].isin(dates_check))].unique())
-                df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates_check)),'schedule_clash_names'] = shedule_names_clash
 
             
-        df.loc[df['date'].between(start_date,end_date),'schedule_name'] = schedule_name
+        for start_date, end_date in zip(start_dates, end_dates):
+            if is_changing==True:
+                df = right_label(df, start_date, end_date, time_schedule_starts, time_schedule_ends, is_odd, whose_this_schedule)
+
+            else:
+                df.loc[(df['start_date'].dt.date>=start_date.date()) & (df['end_date'].dt.date<=end_date.date()), 'label'] = whose_this_schedule
+
+            df = right_time(df, start_date, end_date, time_schedule_starts, time_schedule_ends, whose_this_schedule)
+
+            if is_special==True:
+                #check for special schedule clashes
+                dates_check = df['date'][(df['start_date'].dt.date>=start_date.date()) & (df['end_date'].dt.date<=end_date.date())]
+                special_dates = df['date'][df['is_special']==True]
+                df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates_check)),'schedule_clash'] = True
+                df.loc[df['date'].isin(dates_check),'is_special'] = True
+                df.loc[df['date'].isin(dates_check),'schedule_name'] = holiday
+                shedule_names = df['shedule_names_clash'][(df['date'].isin(special_dates))&(df['date'].isin(dates_check))].unique()
+                shedule_names_clash = list(shedule_names)
+                if len(shedule_names)>1:
+                    shedule_names_clash = str(df['schedule_name'][(df['date'].isin(special_dates))&(df['date'].isin(dates_check))].unique())
+                    df.loc[(df['date'].isin(special_dates))&(df['date'].isin(dates_check)),'schedule_clash_names'] = shedule_names_clash
+
+
+            df.loc[df['date'].between(start_date,end_date),'schedule_name'] = schedule_name
+        df.drop_duplicates(inplace=True, subset=['label','start_date','end_date','time_diff_hours'],keep='last')   
+        df.reset_index(inplace=True, drop=True)
         return df
     
 
@@ -395,14 +419,7 @@ New Year’s Eve/Day: The New Year’s Holiday 5:00 PM December 30 and ending 10
 The mother  even-numbered years, and the father in odd-numbered years. The yearly rotation shall be determined by which year December 30 falls within.'''
 
 
-   
-    
-#function to update year based on previous schedule
-#basically recreate everything but for a new year
-def year(year):
-    return None
-        
-        
+       
         
 def percentage_with_parent(parent):
     return None
@@ -430,45 +447,32 @@ calmap.yearplot(t['plot_label'],cmap='spring')
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 sdt = datetime.datetime(2022, 1, 7)
-edt = datetime.datetime(2022, 12, 31)
+edt = datetime.datetime(2025, 12, 31)
 # cal = calendar()
 # dt = cal.holidays(start=sdt, end=edt)
 # print(dt)
 #my calendar 2022
+
+
+(sh_1.groupby('label')['time_diff_hours'].sum()/sh_1['time_diff_hours'].sum())*100
+df = sh_1[sh_1['date'].dt.year==2022]
+df.reset_index(inplace=True, drop=True)
+# create weeks number based on day of the week  
+df['weeks'] = df['date'].dt.week
+df['weekday'] = df['date'].dt.weekday
+# pivot the table
+df.pivot('weeks', 'weekday', 'time_diff_hours').fillna(0)
 
 c = Calendar()
 #school schedule
 start_date = datetime.date(2022, 1, 7)
 time_schedule_starts = pd.to_timedelta('18:00:00')
 time_schedule_ends = pd.to_timedelta('08:00:00')
+sh_1=None
 sh_1=c.schedule(schedule_name='school time', whose_this_schedule='Dad', frequency='a', \
-                 time_schedule_starts=time_schedule_starts, days=[4,5,6,0,1,2],start_date=start_date,\
-           time_schedule_ends=time_schedule_ends)
+                 time_schedule_starts=time_schedule_starts, days=[4,5,6,0,1,2],start_date=sdt,\
+           time_schedule_ends=time_schedule_ends,end_date=edt)
 #summer school break schedule
 # start_date = datetime.date(2022, 6, 10)
 # end_date = datetime.date(2022, 8, 5)
@@ -493,18 +497,18 @@ sh_1 = c.custody_holidays(df=sh_1, holiday = "Mother's day", days_before_holiday
 sh_1 = c.custody_holidays(df=sh_1, holiday = "Father's day", days_before_holiday_starts=2,\
                                       time_schedule_starts=pd.to_timedelta('18:00:00'), days_after_holiday_ends=1,\
                              time_schedule_ends=pd.to_timedelta('8:00:00'),whose_this_schedule="Dad")
-sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('10:00:00'), \
-                          time_schedule_ends=pd.to_timedelta('17:00:00'), whose_this_schedule='Mom', \
+sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('08:00:00'), \
+                          time_schedule_ends=pd.to_timedelta('18:00:00'), whose_this_schedule='Mom', \
                                     schedule_name='Febraury break', month_of_year_starts=2, week_of_month_starts=2, \
                                     day_of_week_starts=0,  month_of_year_ends=2, week_of_month_ends=2, \
                                     day_of_week_ends=4, is_changing=True,is_odd=False, is_special=True)
-sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('10:00:00'), \
-                          time_schedule_ends=pd.to_timedelta('17:00:00'), whose_this_schedule='Mom', \
+sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('08:00:00'), \
+                          time_schedule_ends=pd.to_timedelta('18:00:00'), whose_this_schedule='Mom', \
                                     schedule_name='Spring break', month_of_year_starts=4, week_of_month_starts=0, \
                                     day_of_week_starts=0,  month_of_year_ends=4, week_of_month_ends=0, \
                                     day_of_week_ends=4, is_changing=True,is_odd=True, is_special=True)
-sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('17:00:00'), \
-                          time_schedule_ends=pd.to_timedelta('10:00:00'), whose_this_schedule='Mom', \
+sh_1 = c.every_year_changed_schedule(df=sh_1, time_schedule_starts=pd.to_timedelta('18:00:00'), \
+                          time_schedule_ends=pd.to_timedelta('08:00:00'), whose_this_schedule='Mom', \
                                     schedule_name='4th July', date_starts=(7,3), date_ends=(7,6),\
                                      is_changing=True,is_odd=False, is_special=True)
 '''4th of July:  5:00 PM on July 3 and ending at 10:00 AM on July 6. The mother even-numbered years, and 
@@ -514,12 +518,12 @@ sh_1 = c.custody_holidays(df=sh_1, time_schedule_starts=pd.to_timedelta('18:00:0
                                     holiday='Thanksgiving', days_before_holiday_starts=1, days_after_holiday_ends=4,\
                                      is_changing=True,is_odd=False)
 
-sh_1 = c.custody_holidays(holiday='Christmas', days_before_holiday_starts=2,time_schedule_starts=pd.to_timedelta('18:00:00'), \
-                          days_after_holiday_ends=1, time_schedule_ends=pd.to_timedelta('10:00:00'), whose_this_schedule="Mom", \
+sh_1 = c.custody_holidays(holiday='Christmas', days_before_holiday_starts=1,time_schedule_starts=pd.to_timedelta('18:00:00'), \
+                          days_after_holiday_ends=2, time_schedule_ends=pd.to_timedelta('08:00:00'), whose_this_schedule="Mom", \
                           df=sh_1, is_changing=True,is_odd=True)
 
-sh_1 = c.custody_holidays(holiday='New Year', days_before_holiday_starts=1,time_schedule_starts=pd.to_timedelta('18:00:00'), \
-                          days_after_holiday_ends=2, time_schedule_ends=pd.to_timedelta('10:00:00'), whose_this_schedule="Mom", \
+sh_1 = c.custody_holidays(holiday="New Year", days_before_holiday_starts=1,time_schedule_starts=pd.to_timedelta('18:00:00'), \
+                          days_after_holiday_ends=2, time_schedule_ends=pd.to_timedelta('08:00:00'), whose_this_schedule="Mom", \
                           df=sh_1, is_changing=True,is_odd=False)
 '''Thanksgiving Break: 5:00 PM of the Wednesday before Thanksgiving and ending Monday morning return to school, 
 or 10:00 AM if school is not in session. The mother  even-numbered years, and the father  odd-numbered years.
@@ -531,13 +535,3 @@ New Year’s Eve/Day: The New Year’s Holiday 5:00 PM December 30 and ending 10
 The mother  even-numbered years, and the father in odd-numbered years. The yearly rotation shall be determined by which year December 30 falls within.
 need thanksgiving, christmas, new year
 '''
-
-
-
-sh_1[sh_1['is_special']==True]
-
-t = sh_1.set_index('date')
-t['plot_label']=0
-t.loc[t['label']=='Dad', 'plot_label'] = 1
-figure(figsize=(15, 20), dpi=80)
-calmap.yearplot(t['plot_label'],cmap='spring')
