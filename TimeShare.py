@@ -1,3 +1,15 @@
+import calendar
+import warnings
+warnings.simplefilter(action='ignore')
+#from pandas.tseries.holiday import USFederalHolidayCalendar as calendar
+import holidays
+import pandas as pd
+import numpy as np
+import datetime
+import math
+from matplotlib.pyplot import figure
+import calmap
+pd.set_option('display.max_rows', 100)
 '''This function takes user input for calendar class'''
 def user_input_schedule():
     schedule_name = input('Name your schedule')
