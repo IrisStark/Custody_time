@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import calmap
 pd.set_option('display.max_rows', 100)
 
+
 '''This function takes user input for calendar class'''
 def user_input_schedule():
     schedule_name = input('Name your schedule')
@@ -414,9 +415,20 @@ class Calendar():
         df['end_date'] = df['start_date'].shift(-1)
         df['time_diff_hours'] = (df['end_date'] - df['start_date']).dt.total_seconds()/3600
         return df
-      
+    
+
+       
+        
 def percentage_with_parent(parent):
     return None
+
+start_date = datetime.date(2022, 6, 3)
+time_schedule_starts = pd.to_timedelta('20:00:00')
+end_date = datetime.date(2022, 7, 8)
+time_schedule_ends = pd.to_timedelta('18:00:00')
+days=[4,5,6,0,1,2,3,4]
+days = [4,5]
+#days = [4,5,6]
 
 sdt = datetime.datetime(2021, 10, 1)
 edt = datetime.datetime(2025, 12, 31)
@@ -437,8 +449,8 @@ sh_1=c.schedule(schedule_name='school time', whose_this_schedule='Dad', frequenc
 
 time_schedule_ends = pd.to_timedelta('18:00:00')
 time_schedule_starts = pd.to_timedelta('18:00:00')
-sh_1 = c.schedule(df=sh_1,frequency='a', month_of_year_starts=6, \
-                 week_of_month_starts=1, day_of_week_starts=4,  month_of_year_ends=8, \
+sh_1 = c.schedule(df=sh_1,frequency='a', month_of_year_starts=6, #month_of_year_starts=7
+                 week_of_month_starts=1, day_of_week_starts=4,  month_of_year_ends=8, #week_of_month_starts=2
                  week_of_month_ends=0, day_of_week_ends=4, time_schedule_ends=time_schedule_ends,
                   time_schedule_starts=time_schedule_starts,
                      days=[4,5,6,0,1,2,3,4],  schedule_name='summer school break',whose_this_schedule='Dad')
@@ -487,66 +499,5 @@ sh_1 = c.custody_holidays(holiday="New Year", days_before_holiday_starts=1,time_
 sh_1 = c.bug_fix(sh_1)
 
 
-
-
-t = sh_1[sh_1['date'].dt.year==2022].set_index('date')
-t['plot_label']=0
-t.loc[t['label']=='Dad', 'plot_label'] = 1
-figure(figsize=(15, 20), dpi=80)
-calmap.yearplot(t['plot_label'],cmap='spring')
-
-
-
-from IPython.display import display,HTML
-
-def multi_column_df_display(list_dfs, cols=3):
-    html_table = "<table style='width:100%; border:0px'>{content}</table>"
-    html_row = "<tr style='border:0px'>{content}</tr>"
-    html_cell = "<td style='width:{width}%;vertical-align:top;border:0px'>{{content}}</td>"
-    html_cell = html_cell.format(width=100/cols)
-
-    cells = [ html_cell.format(content=df.to_html()) for df in list_dfs ]
-    cells += (cols - (len(list_dfs)%cols)) * [html_cell.format(content="")] # pad
-    rows = [ html_row.format(content="".join(cells[i:i+cols])) for i in range(0,len(cells),cols)]
-    display(HTML(html_table.format(content="".join(rows))))
-    
-    
-    
- import plotly.express as px
-for i in range(1,13):
-    df = sh_1[(sh_1['date'].dt.month==i)&(sh_1['date'].dt.year==2022)]
-    fig = px.timeline(df, x_start=df['start_date'], x_end=df['end_date'], y=df['label'],  color=df['label'],\
-                     text=df['time_diff_hours'].astype(int),height=400,facet_row_spacing=0,
-                     facet_col_spacing=0,width=1500,color_discrete_map={'Mom':'#FF4500','Dad':'#00FF7F'},
-                     )#height=200
-    fig.update_xaxes(
-        tickvals=df['start_date'],
-        nticks=len(sh_1[(sh_1['date'].dt.month==5)]),
-        tickangle=-45,
-        tickfont=dict(size=8)
-    ) 
-    fig.update_layout(title_text=str(calendar.month_name[i])+' '+str(df['date'].dt.year.unique()[0]))
-    # add annotations
-    annots =  []
-    for index, row in df[df['is_special']==True].iterrows():
-        annots.append(dict(x=row['start_date'],y=2,text=row['schedule_name'], showarrow=False, \
-                           font=dict(color='black', size=12),textangle=-90,xshift=10))
-    fig['layout']['annotations'] = annots
-
-    fig.show()
-    df1=pd.crosstab(df['time_diff_hours'],df['label'])
-    df2=pd.pivot_table(data=df,index=['label'],values=['time_diff_hours'],aggfunc=np.sum)#,margins=True
-    df2.columns=['total hours in a month']
-    multi_column_df_display([df1,df2])
-
-
-df = sh_1[sh_1['date'].dt.year==2022]
-
-print("\n\n Totals:\n")
-func = lambda x: 100*x.sum()/df['time_diff_hours'].sum()
-
-df2=pd.pivot_table(data=df,index=['label'],values=['time_diff_hours'],aggfunc=[np.sum,func]).round(2)
-df2.columns=['total hours in a year','percent of a time']
-multi_column_df_display([df2])
 
 
